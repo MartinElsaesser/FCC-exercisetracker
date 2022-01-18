@@ -6,7 +6,7 @@ require('dotenv').config()
 const User = require("./models/User");
 const AppError = require("./Error");
 
-mongoose.connect(`mongodb+srv://${process.env.db_USER}:${process.env.db_PASS}@${process.env.db_HOST}/url-shortener?retryWrites=true&w=majority`);
+mongoose.connect(`mongodb+srv://${process.env.db_USER}:${process.env.db_PASS}@${process.env.db_HOST}/exercise-tracker?retryWrites=true&w=majority`);
 mongoose.connection.on('connection', data => {
 	console.log("connection" + data);
 });
