@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 require('dotenv').config()
 const User = require("./models/User");
 const wrapAsync = require('./utility/wrapAsync');
+const AppError = require("./utility/Error");
 
 mongoose.connect(`mongodb+srv://${process.env.db_USER}:${process.env.db_PASS}@${process.env.db_HOST}/exercise-tracker?retryWrites=true&w=majority`);
 mongoose.connection.on('connection', data => {
@@ -24,7 +25,7 @@ app.get('/', (req, res) => {
 
 app.post("/api/users", wrapAsync(async (req, res, next) => {
 	let user = { username: req.body.username };
-	if (!user.username) return res.send("Missing username");
+	if (!user.username) throw new AppError("Username missing", 400);
 	let { username, _id } = await User.create(user);
 	return res.json({ username, _id });
 }));
@@ -46,9 +47,10 @@ app.post("/api/users/:id/exercises", wrapAsync(async (req, res, next) => {
 		date: req.body.date
 	}
 	if (!(id && exercise.description && exercise.duration))
-		return res.send("Missing arguments")
+		throw new AppError("Missing arguments", 400);
 
 	let user = await User.findById(id);
+	if (!user) throw new AppError("Cannot find User", 400);
 	user.exercises.push(exercise);
 	user = await user.save();
 	let { date, duration, description } = user.exercises[user.exercises.length - 1];
@@ -65,7 +67,9 @@ app.get("/api/users/:id/logs", wrapAsync(async (req, res, next) => {
 	let { limit, to, from } = req.query;
 	if (to) to = new Date(to);
 	if (from) from = new Date(from);
-	let user = (await User.findById(id)).toObject();
+	let user = (await User.findById(id));
+	if (!user) throw new AppError("Cannot find User", 400);
+	user = user.toObject();
 	let { _id, username, exercises: log } = user;
 	log.forEach(e => e.date = new Date(e.date).toDateString());
 
@@ -94,7 +98,8 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-	res.status(err.status).send(err.message)
+	const { status = 500, message = "Something went wrong" } = err;
+	res.status(status).send(message)
 });
 
 function isValidDate(d) {
